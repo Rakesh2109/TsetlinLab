@@ -426,6 +426,21 @@
   .links-side .mate .mn{font-weight:700;font-size:12.5px}
   .links-side .mate .mw{font-size:11px;color:var(--mut)}
   .links-side .mate.for .mw{color:#a9d977} .links-side .mate.against .mw{color:#e88aa0}
+  /* ---- Constellation tabs (Feature Constellation + Threshold-Aware) ---- */
+  .const-grid{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+  @media (max-width:900px){ .const-grid{grid-template-columns:1fr} }
+  .const-canvas{border:1px solid var(--line);border-radius:12px;
+    background:radial-gradient(ellipse at 50% 38%, #11151f 0%, #0a0c12 70%, #07080d 100%);padding:6px;overflow:hidden}
+  .const-canvas svg{display:block;width:100%;height:auto}
+  .const-canvas svg text{font-family:ui-monospace,monospace;user-select:none}
+  .const-canvas svg .star{transition:opacity .12s,r .12s}
+  .const-side{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:12px;max-height:600px;overflow:auto}
+  .const-side-hd{font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .const-side .row{display:flex;flex-direction:column;gap:1px;border-left:3px solid var(--line);padding:5px 0 5px 9px;margin:0 0 7px}
+  .const-side .row.for{border-left-color:var(--pos)} .const-side .row.against{border-left-color:var(--neg)}
+  .const-side .row .rn{font-weight:700;font-size:12.5px}
+  .const-side .row .rw{font-size:11px;color:var(--mut)}
+  .const-side .row.for .rw{color:#a9d977} .const-side .row.against .rw{color:#e88aa0}
   /* ---- Encoding tab: one feature -> bits -> literals ---- */
   .enctoolbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
   .encval{font-size:22px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
@@ -499,6 +514,8 @@
       <button data-tab="clauses">Rules</button>
       <button data-tab="global">Learned Representation</button>
       <button data-tab="links">Feature Teams</button>
+      <button data-tab="constellation">Feature Constellation</button>
+      <button data-tab="thrconst">Threshold Constellation</button>
       <button data-tab="activity">Model Behavior</button>
       <button data-tab="predictions">Why This Prediction</button>
     </div>
@@ -692,6 +709,71 @@
         </div>
       </div>
       <div id="linksBody"></div>
+    </section>
+
+    <!-- FEATURE CONSTELLATION MAP — every rule drawn as a constellation of its features -->
+    <section id="tab-constellation" class="hidden">
+      <div class="panel">
+        <h2>Feature Constellation Map — every rule as a constellation</h2>
+        <p class="learn-intro">Each <b>star</b> is a feature; each faint <b>constellation line</b> is one learned rule, joining
+          the features that rule reads together. Where many rules pass through the same features, the lines pile up into a
+          bright cluster — the model's “signature shape” for this class. <b>Brighter / bigger stars</b> carry more evidence;
+          <b>green lines</b> come from rules that support the class, <b>red lines</b> from rules that argue against it.
+          Click a star to spotlight just the rules that touch it.</p>
+        <div class="forest-legend" style="margin-top:10px">
+          <span><i class="dot pos"></i> green line = a rule that supports this class</span>
+          <span><i class="dot neg"></i> red line = a rule that argues against it</span>
+          <span class="muted">bigger star = the feature is used by more (or harder-firing) rules</span>
+        </div>
+        <div class="toolbar class-selector-big" style="margin-top:14px">
+          <span class="lbl">class</span>
+          <select id="cmapClass"></select>
+          <span class="lbl" style="margin-left:6px">rules shown</span>
+          <input type="range" id="cmapRules" min="5" max="120" step="5" value="40" style="vertical-align:middle">
+          <span id="cmapRulesV" class="muted">40</span>
+          <span class="lbl" style="margin-left:6px">show</span>
+          <select id="cmapPol">
+            <option value="all">all rules</option>
+            <option value="positive">only rules that support</option>
+            <option value="negative">only rules that oppose</option>
+          </select>
+          <span class="muted" id="cmapNote" style="font-size:12px"></span>
+        </div>
+      </div>
+      <div id="cmapBody"></div>
+    </section>
+
+    <!-- THRESHOLD-AWARE CONSTELLATION — stars split into their learned threshold rungs -->
+    <section id="tab-thrconst" class="hidden">
+      <div class="panel">
+        <h2>Threshold-Aware Constellation — where on each scale the rules fire</h2>
+        <p class="learn-intro">Same constellation idea, but now each feature's star is stretched into a <b>vertical ladder</b>
+          spanning its real value range (low at the bottom, high at the top). Every learned threshold sits at its true
+          height on that ladder as a <b>rung</b>; a rung is <b>green</b> where crossing it votes <i>for</i> the class and
+          <b>red</b> where it votes <i>against</i>. Constellation lines link the rungs that fire <b>together</b> inside the
+          same rule — so you can read not just <i>which</i> features pair up, but <i>at what value</i> they do.
+          Click a feature to spotlight its rungs and the rules that use them.</p>
+        <div class="forest-legend" style="margin-top:10px">
+          <span><i class="dot pos"></i> green rung = crossing this threshold votes <b>for</b> the class</span>
+          <span><i class="dot neg"></i> red rung = it votes <b>against</b></span>
+          <span class="muted">a rung's height = the threshold's value on that feature's real scale · thicker = more evidence</span>
+        </div>
+        <div class="toolbar class-selector-big" style="margin-top:14px">
+          <span class="lbl">class</span>
+          <select id="tcClass"></select>
+          <span class="lbl" style="margin-left:6px">features</span>
+          <input type="range" id="tcFeats" min="4" max="24" step="1" value="12" style="vertical-align:middle">
+          <span id="tcFeatsV" class="muted">12</span>
+          <span class="lbl" style="margin-left:6px">show</span>
+          <select id="tcPol">
+            <option value="all">for &amp; against</option>
+            <option value="for">only votes for</option>
+            <option value="against">only votes against</option>
+          </select>
+          <span class="muted" id="tcNote" style="font-size:12px"></span>
+        </div>
+      </div>
+      <div id="tcBody"></div>
     </section>
 
     <!-- TREES — one clear tree per class -->
@@ -1020,7 +1102,7 @@ function loadAtlas(obj, name){
     $('#drop').classList.add('hidden'); $('#app').classList.remove('hidden');
     setSrcName(name, obj);
     $$('#tabs button[data-tab="bits"]').forEach(b=>b.classList.toggle('hidden', BITS.length===0));
-    renderOverview(); renderFeatures(); renderBits(); setupEncoding(); setupClauses(); setupLearn(); setupGlobal(); setupLinks(); setupTrees(); renderLearn(); renderGlobal(); renderLinks(); renderTrees(); renderActivityStatic();
+    renderOverview(); renderFeatures(); renderBits(); setupEncoding(); setupClauses(); setupLearn(); setupGlobal(); setupLinks(); setupConstellation(); setupThrConst(); setupTrees(); renderLearn(); renderGlobal(); renderLinks(); renderConstellation(); renderThrConst(); renderTrees(); renderActivityStatic();
     if(PRED){ recompute(); } else { maybeSwitchPredTab(); }
     // try to bring up a WASM engine in the background; on success it becomes
     // the active inference path and predictions are recomputed through it.
@@ -1085,7 +1167,7 @@ else window.addEventListener('load', autoLoad);
 // ---------------------------------------------------------------- tabs
 $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
   $$('#tabs button').forEach(x=>x.classList.toggle('on', x===b));
-  ['overview','features','bits','encoding','clauses','learn','global','links','trees','activity','predictions'].forEach(t=>$('#tab-'+t).classList.toggle('hidden', t!==b.dataset.tab));
+  ['overview','features','bits','encoding','clauses','learn','global','links','constellation','thrconst','trees','activity','predictions'].forEach(t=>$('#tab-'+t).classList.toggle('hidden', t!==b.dataset.tab));
 }));
 function gotoTab(name){ const b=$('#tabs button[data-tab="'+name+'"]'); if(b) b.click(); }
 
@@ -1467,7 +1549,7 @@ function recompute(){
   }
   COMP={pred,correct,nact,ai,nCorrect,nLabelled,
         clauseFire,clauseVotes,featUse,sumFired,nSamples:n};
-  renderSummary(); renderPred(); renderLearn(); renderGlobal(); renderLinks(); renderTrees(); renderActivity();
+  renderSummary(); renderPred(); renderLearn(); renderGlobal(); renderLinks(); renderConstellation(); renderThrConst(); renderTrees(); renderActivity();
   // auto-open the first sample so an explanation is visible immediately
   const first=predFiltered()[0];
   if(first){ predState.sel=first.idx; renderPred(); showSample(first.idx); }
@@ -2264,6 +2346,337 @@ function renderGlobal(){
     return;
   }
   $('#globalGrid').innerHTML = renderThresholdMap(globalState.focusIdx, globalState.sortMode);
+}
+
+// ===========================================================================
+//  FEATURE CONSTELLATION MAP — every rule drawn as a constellation of features
+//  Each feature is a "star" placed on a circle (ordered by mass so heavy
+//  features cluster); each clause is a faint polyline ("constellation line")
+//  through the distinct features it reads. Data-driven when a CSV is loaded
+//  (clauseLearnWeight uses real firings), else from the trained rule bank.
+// ===========================================================================
+let cmapState={focusIdx:0, maxRules:40, pol:'all', selFeat:null};
+
+function setupConstellation(){
+  const fc=$('#cmapClass');
+  if(ENGINE && fc){
+    fc.innerHTML=ENGINE.classes.map((c,i)=>'<option value="'+i+'">'+esc(c)+'</option>').join('');
+    fc.value=String(cmapState.focusIdx);
+  }
+  const mr=$('#cmapRules'); if(mr) mr.value=String(cmapState.maxRules);
+  const pol=$('#cmapPol'); if(pol) pol.value=cmapState.pol;
+  if(fc && !fc._wired){ fc._wired=true; fc.onchange=()=>{ cmapState.focusIdx=+fc.value; cmapState.selFeat=null; renderConstellation(); }; }
+  if(mr && !mr._wired){ mr._wired=true; mr.oninput=()=>{ cmapState.maxRules=+mr.value; $('#cmapRulesV').textContent=mr.value; renderConstellation(); }; }
+  if(pol && !pol._wired){ pol._wired=true; pol.onchange=()=>{ cmapState.pol=pol.value; cmapState.selFeat=null; renderConstellation(); }; }
+}
+
+// Collect, for one class, every clause as a "constellation": its distinct,
+// non-impossible features + weight + polarity, plus per-feature total mass.
+function buildConstellation(clsIdx){
+  const rules=[]; const nodeMass={};
+  ENGINE.clauses.forEach((eng,ci)=>{
+    if(eng.clsIdx!==clsIdx) return;
+    if(cmapState.pol!=='all' && eng.polarity!==cmapState.pol) return;
+    const c=CLAUSES.find(x=>x.id===eng.id)||eng;
+    const w=clauseLearnWeight(ci,c);
+    const feats=[...new Set(thermoConds(c).filter(cd=>!cd.impossible).map(cd=>cd.feature))].sort();
+    if(feats.length<1) return;
+    feats.forEach(f=>{ nodeMass[f]=(nodeMass[f]||0)+w; });
+    rules.push({id:eng.id, dir:(eng.polarity==='positive'?'for':'against'), w, feats, name:(c.name||('rule #'+eng.id))});
+  });
+  rules.sort((a,b)=>b.w-a.w);
+  const nodes=Object.keys(nodeMass).map(name=>({name, mass:nodeMass[name]})).sort((x,y)=>y.mass-x.mass);
+  return {cls:ENGINE.classes[clsIdx], clsIdx, rules, nodes};
+}
+
+// Draw the constellation: stars on a ring, polylines per rule. `selFeat` (if set)
+// dims everything not touching that feature.
+function constellationSvg(con, maxRules, selFeat){
+  const rules=con.rules.slice(0, maxRules);
+  if(!rules.length) return '<div class="tlm-empty">This class has no rule with a usable (non-contradictory) feature for the current filter.</div>';
+  // only stars that appear in the shown rules
+  const used=new Set(); rules.forEach(r=>r.feats.forEach(f=>used.add(f)));
+  const massByName={}; con.nodes.forEach(n=>massByName[n.name]=n.mass);
+  const stars=[...used].sort((x,y)=>(massByName[y]||0)-(massByName[x]||0));
+  const nN=stars.length;
+  const W=900, H=600, cx=W/2, cy=H/2+6, R=Math.min(W,H)/2-122;
+  const pos={};
+  stars.forEach((name,i)=>{
+    // single star sits in the centre; otherwise spread on the ring
+    if(nN===1){ pos[name]={x:cx,y:cy,ang:-Math.PI/2}; return; }
+    const ang=-Math.PI/2 + 2*Math.PI*i/nN;
+    pos[name]={x:cx+R*Math.cos(ang), y:cy+R*Math.sin(ang), ang};
+  });
+  const maxW=Math.max.apply(null, rules.map(r=>r.w))||1;
+  const maxMass=Math.max(1, ...stars.map(n=>massByName[n]||0));
+  let s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="feature constellation for '+esc(con.cls)+'">';
+  // faint background "sky dust" for depth (deterministic, derived from star angles)
+  stars.forEach((name,i)=>{
+    const p=pos[name]; const dx=((i*53)%37)-18, dy=((i*29)%41)-20;
+    s+='<circle cx="'+(p.x+dx).toFixed(1)+'" cy="'+(p.y+dy).toFixed(1)+'" r="0.7" fill="#2b3550" opacity="0.5"/>';
+  });
+  // constellation lines (rules), drawn under the stars
+  rules.forEach(r=>{
+    const involved=selFeat ? r.feats.includes(selFeat) : true;
+    const t=r.w/maxW;
+    const base = r.dir==='for' ? '158,206,106' : '247,118,142';
+    const op = (selFeat && !involved) ? 0.04 : (0.10+0.40*t);
+    const sw = (selFeat && involved ? 1.6 : 1.0)*(0.6+2.4*t);
+    const pts=r.feats.map(f=>pos[f]).filter(Boolean);
+    if(pts.length===1){
+      // single-feature rule: a short halo ring around its star
+      const p=pts[0];
+      s+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(7+6*t).toFixed(1)+'" fill="none" stroke="rgba('+base+','+op.toFixed(3)+')" stroke-width="'+sw.toFixed(2)+'"/>';
+      return;
+    }
+    // bow each segment gently toward the centre so dense skies stay legible
+    let d='M'+pts[0].x.toFixed(1)+' '+pts[0].y.toFixed(1);
+    for(let i=1;i<pts.length;i++){
+      const a=pts[i-1], b=pts[i];
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      const bx=mx+(cx-mx)*0.30, by=my+(cy-my)*0.30;
+      d+=' Q'+bx.toFixed(1)+' '+by.toFixed(1)+' '+b.x.toFixed(1)+' '+b.y.toFixed(1);
+    }
+    s+='<path d="'+d+'" fill="none" stroke="rgba('+base+','+op.toFixed(3)+')" stroke-width="'+sw.toFixed(2)+'" stroke-linecap="round" stroke-linejoin="round"/>';
+  });
+  // stars (nodes) on top
+  stars.forEach(name=>{
+    const p=pos[name]; const m=massByName[name]||0;
+    const r=4.5+11*Math.sqrt(m/maxMass);
+    const dim = selFeat && name!==selFeat ? ' opacity="0.4"' : '';
+    const stroke = (selFeat && name===selFeat) ? '#e0af68' : '#9eb8ff';
+    const sw = (selFeat && name===selFeat) ? 2.6 : 1.4;
+    // glow + core
+    s+='<circle class="star" data-feat="'+esc(name)+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="#0c1018" stroke="'+stroke+'" stroke-width="'+sw+'"'+dim+'/>';
+    s+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(r*0.42).toFixed(1)+'" fill="'+stroke+'" opacity="'+(selFeat&&name!==selFeat?0.3:0.85)+'" pointer-events="none"/>';
+    const right=Math.cos(p.ang)>=-0.01;
+    const lx=p.x+(right?1:-1)*(r+6), ly=p.y+4;
+    s+='<text data-feat="'+esc(name)+'" x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+(right?'start':'end')+'" fill="#dfe4f0" font-size="12"'+(selFeat&&name!==selFeat?' opacity="0.45"':'')+'>'+esc(name)+'</text>';
+  });
+  return s+'</svg>';
+}
+
+function renderConstellation(){
+  const host=$('#cmapBody'); if(!host) return;
+  if(!ENGINE || !CLAUSES.length){ host.innerHTML=''; return; }
+  const con=buildConstellation(cmapState.focusIdx);
+  $('#cmapNote').textContent = (COMP && COMP.clauseFire)
+    ? 'star size & line weight from '+COMP.nSamples+' loaded samples'
+    : 'star size & line weight from the trained rule bank';
+  const shown=Math.min(cmapState.maxRules, con.rules.length);
+  const svg=constellationSvg(con, shown, cmapState.selFeat);
+  // sidebar: rules touching the selected star, else the strongest rules overall
+  let side;
+  const ruleRow=r=>'<div class="row '+r.dir+'"><span class="rn">'+esc(r.name)+'</span>'+
+    '<span class="rw">'+(r.dir==='for'?'＋ supports':'－ opposes')+' · '+r.feats.length+' feature'+(r.feats.length===1?'':'s')+' · weight '+fmtNum(+r.w.toFixed(2))+'</span></div>';
+  if(cmapState.selFeat){
+    const f=cmapState.selFeat;
+    const touching=con.rules.filter(r=>r.feats.includes(f)).slice(0,16);
+    side='<div class="const-side-hd"><b>'+esc(f)+'</b> · rules through this star'+
+      '<button class="linklike" id="cmapClear">clear</button></div>'+
+      (touching.length? touching.map(ruleRow).join('') : '<div class="muted">No shown rule uses this feature.</div>');
+  } else {
+    const tops=con.rules.slice(0,16);
+    side='<div class="const-side-hd"><b>Strongest rules</b><span class="muted" style="font-weight:400"> · click a star to focus</span></div>'+
+      (tops.length? tops.map(ruleRow).join('') : '<div class="muted">No rules for the current filter.</div>');
+  }
+  host.innerHTML=
+    '<div class="gsig"><div class="gsig-hd"><div class="gtitle">'+esc(con.cls)+'</div>'+
+    '<div class="gmeta">drawing the '+shown+' strongest of '+con.rules.length+' rules · '+con.nodes.length+' features · click any star to spotlight its rules</div></div>'+
+    '<div class="gsig-bd"><div class="const-grid">'+
+      '<div class="const-canvas" id="cmapCanvas">'+svg+'</div>'+
+      '<div class="const-side">'+side+'</div>'+
+    '</div></div></div>';
+  const canvas=$('#cmapCanvas');
+  if(canvas){
+    canvas.querySelectorAll('[data-feat]').forEach(el=>{
+      el.style.cursor='pointer';
+      el.addEventListener('click',()=>{ const f=el.getAttribute('data-feat'); cmapState.selFeat=(cmapState.selFeat===f?null:f); renderConstellation(); });
+    });
+  }
+  const clr=$('#cmapClear'); if(clr) clr.onclick=()=>{ cmapState.selFeat=null; renderConstellation(); };
+}
+
+// ===========================================================================
+//  THRESHOLD-AWARE CONSTELLATION — stars stretched into their threshold ladders
+//  Each feature becomes a vertical ladder over its real value range; every
+//  learned threshold is a "rung" placed at its true height, green=votes-for /
+//  red=votes-against (from buildThresholdMap). Rules link the rungs that fire
+//  together. Reads which features pair AND at what value they do.
+// ===========================================================================
+let tcState={focusIdx:0, maxFeats:12, pol:'all', selFeat:null};
+
+function setupThrConst(){
+  const fc=$('#tcClass');
+  if(ENGINE && fc){
+    fc.innerHTML=ENGINE.classes.map((c,i)=>'<option value="'+i+'">'+esc(c)+'</option>').join('');
+    fc.value=String(tcState.focusIdx);
+  }
+  const mf=$('#tcFeats'); if(mf) mf.value=String(tcState.maxFeats);
+  const pol=$('#tcPol'); if(pol) pol.value=tcState.pol;
+  if(fc && !fc._wired){ fc._wired=true; fc.onchange=()=>{ tcState.focusIdx=+fc.value; tcState.selFeat=null; renderThrConst(); }; }
+  if(mf && !mf._wired){ mf._wired=true; mf.oninput=()=>{ tcState.maxFeats=+mf.value; $('#tcFeatsV').textContent=mf.value; renderThrConst(); }; }
+  if(pol && !pol._wired){ pol._wired=true; pol.onchange=()=>{ tcState.pol=pol.value; renderThrConst(); }; }
+}
+
+// Build the threshold ladders for one class: top-N features by mass, each with
+// its rungs (every learned ≥/< threshold, with for/against weight), plus the
+// rule co-occurrences expressed as rung pairs (which (feat,thr) fire together).
+function buildThrConstellation(clsIdx){
+  const map=buildThresholdMap(clsIdx);            // per-feature hi/lo threshold masses
+  let feats=map.features.slice().sort((a,b)=>b.mass-a.mass).slice(0, tcState.maxFeats);
+  const keep=new Set(feats.map(f=>f.name));
+  // assemble rungs per feature: each distinct threshold -> {thr, op, support, against}
+  const ladders=feats.map(f=>{
+    const fr=FEATURES.find(x=>x.name===f.name);
+    const range=(fr&&fr.range)?fr.range.slice():(f.range||[0,1]);
+    const rungs=[];
+    f.hiThrs.forEach(t=>rungs.push({thr:t.thr, op:'≥', support:t.support, against:t.against}));
+    f.loThrs.forEach(t=>rungs.push({thr:t.thr, op:'<', support:t.support, against:t.against}));
+    rungs.sort((a,b)=>a.thr-b.thr);
+    return {name:f.name, range, rungs, mass:f.mass, net:f.net};
+  });
+  // rule co-occurrences (restricted to kept features) for the constellation lines
+  const links=[]; // {a:{feat,thr,op}, b:{...}, dir, w}
+  ENGINE.clauses.forEach((eng,ci)=>{
+    if(eng.clsIdx!==clsIdx) return;
+    if(tcState.pol!=='all'){
+      const want = tcState.pol==='for' ? 'positive':'negative';
+      if(eng.polarity!==want) return;
+    }
+    const c=CLAUSES.find(x=>x.id===eng.id)||eng;
+    const w=clauseLearnWeight(ci,c);
+    const dir=eng.polarity==='positive'?'for':'against';
+    // one binding rung per (feature,state) in this clause
+    const conds=thermoConds(c).filter(cd=>!cd.impossible && keep.has(cd.feature))
+      .map(cd=>({feat:cd.feature, thr:cd.thr, op:cd.state==='on'?'≥':'<'}));
+    for(let i=0;i<conds.length;i++) for(let j=i+1;j<conds.length;j++){
+      links.push({a:conds[i], b:conds[j], dir, w});
+    }
+  });
+  // dense models make hundreds of rung-pairs per class; keep the heaviest so the
+  // sky stays legible (and the SVG stays small). Coincident rung pairs are merged.
+  const mk={};
+  links.forEach(l=>{
+    const ka=l.a.feat+'@'+l.a.op+l.a.thr, kb=l.b.feat+'@'+l.b.op+l.b.thr;
+    const key=(ka<kb?ka+'|'+kb:kb+'|'+ka)+'|'+l.dir;
+    const e=mk[key]||(mk[key]={a:l.a,b:l.b,dir:l.dir,w:0,n:0}); e.w+=l.w; e.n++;
+  });
+  const merged=Object.keys(mk).map(k=>mk[k]).sort((x,y)=>y.w-x.w).slice(0, 600);
+  return {cls:ENGINE.classes[clsIdx], clsIdx, ladders, links:merged, nLinksTotal:links.length};
+}
+
+// SVG: vertical ladders side by side, rungs at true value-heights, rule lines
+// joining rungs that co-fire. `selFeat` dims unrelated ladders & lines.
+function thrConstellationSvg(tc, selFeat){
+  const L=tc.ladders;
+  if(!L.length) return '<div class="tlm-empty">This class has no feature with usable learned thresholds for the current filter.</div>';
+  const pol=tcState.pol;
+  const W=Math.max(760, 150*L.length), H=560, padT=46, padB=64;
+  const colW=W/L.length, ladH=H-padT-padB;
+  // height mapping per ladder (its own value range, low at bottom)
+  const yOf=(lad,thr)=>{
+    const [lo,hi]=lad.range; const span=(hi-lo)||1;
+    const tt=Math.max(0,Math.min(1,(thr-lo)/span));
+    return padT+ladH*(1-tt);
+  };
+  const xOf=i=>colW*(i+0.5);
+  const idxByName={}; L.forEach((l,i)=>idxByName[l.name]=i);
+  const maxRW=Math.max(1, ...L.flatMap(l=>l.rungs.map(r=>r.support+r.against)));
+  const maxLW=Math.max(1, ...tc.links.map(l=>l.w));
+  let s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="threshold-aware constellation for '+esc(tc.cls)+'">';
+  // constellation lines first (rule co-firings between rungs)
+  tc.links.forEach(lk=>{
+    const ia=idxByName[lk.a.feat], ib=idxByName[lk.b.feat];
+    if(ia===undefined||ib===undefined) return;
+    const la=L[ia], lb=L[ib];
+    const involved = !selFeat || lk.a.feat===selFeat || lk.b.feat===selFeat;
+    const x1=xOf(ia), y1=yOf(la,lk.a.thr), x2=xOf(ib), y2=yOf(lb,lk.b.thr);
+    const t=lk.w/maxLW;
+    const base=lk.dir==='for'?'158,206,106':'247,118,142';
+    const op=(selFeat&&!involved)?0.03:(0.07+0.30*t);
+    const sw=(0.5+1.8*t)*(selFeat&&involved?1.5:1);
+    const mx=(x1+x2)/2, my=(y1+y2)/2 - Math.abs(x2-x1)*0.12;  // gentle upward bow
+    s+='<path d="M'+x1.toFixed(1)+' '+y1.toFixed(1)+' Q'+mx.toFixed(1)+' '+my.toFixed(1)+' '+x2.toFixed(1)+' '+y2.toFixed(1)+'" fill="none" stroke="rgba('+base+','+op.toFixed(3)+')" stroke-width="'+sw.toFixed(2)+'"/>';
+  });
+  // ladders + rungs
+  L.forEach((lad,i)=>{
+    const x=xOf(i);
+    const dim=selFeat&&lad.name!==selFeat?0.4:1;
+    // spine
+    s+='<line x1="'+x.toFixed(1)+'" y1="'+padT+'" x2="'+x.toFixed(1)+'" y2="'+(padT+ladH)+'" stroke="#39425c" stroke-width="1.4" opacity="'+dim+'"/>';
+    // range end caps
+    s+='<text x="'+x.toFixed(1)+'" y="'+(padT+ladH+16)+'" text-anchor="middle" fill="#6b7488" font-size="9.5" opacity="'+dim+'">'+esc(fmtNum(lad.range[0]))+'</text>';
+    s+='<text x="'+x.toFixed(1)+'" y="'+(padT-8)+'" text-anchor="middle" fill="#6b7488" font-size="9.5" opacity="'+dim+'">'+esc(fmtNum(lad.range[1]))+'</text>';
+    // rungs
+    lad.rungs.forEach(r=>{
+      const net=r.support-r.against;
+      if(pol==='for' && r.support<=0) return;
+      if(pol==='against' && r.against<=0) return;
+      const y=yOf(lad,r.thr);
+      const mass=r.support+r.against;
+      const half=(5+16*Math.sqrt(mass/maxRW));
+      const col = net>=0 ? '#9ece6a' : '#f7768e';
+      const op = dim*(0.55+0.4*Math.min(1,mass/maxRW));
+      s+='<line x1="'+(x-half).toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x+half).toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="'+col+'" stroke-width="2.4" opacity="'+op.toFixed(3)+'" stroke-linecap="round"/>';
+      // tiny op/value tag on the side for the strongest rungs
+      if(mass/maxRW>0.5){
+        s+='<text x="'+(x+half+4).toFixed(1)+'" y="'+(y+3).toFixed(1)+'" fill="'+col+'" font-size="8.5" opacity="'+dim+'">'+esc(r.op)+esc(fmtNum(r.thr))+'</text>';
+      }
+    });
+    // feature label
+    const stroke=(selFeat&&lad.name===selFeat)?'#e0af68':'#dfe4f0';
+    s+='<text data-feat="'+esc(lad.name)+'" x="'+x.toFixed(1)+'" y="'+(padT+ladH+34)+'" text-anchor="middle" fill="'+stroke+'" font-size="11" font-weight="'+(selFeat&&lad.name===selFeat?'700':'400')+'" opacity="'+dim+'">'+esc(lad.name)+'</text>';
+  });
+  return s+'</svg>';
+}
+
+function renderThrConst(){
+  const host=$('#tcBody'); if(!host) return;
+  if(!ENGINE || !CLAUSES.length){ host.innerHTML=''; return; }
+  const tc=buildThrConstellation(tcState.focusIdx);
+  $('#tcNote').textContent = (COMP && COMP.clauseFire)
+    ? 'rung & line weight from '+COMP.nSamples+' loaded samples'
+    : 'rung & line weight from the trained rule bank';
+  const svg=thrConstellationSvg(tc, tcState.selFeat);
+  // sidebar: rungs of the selected feature, else the most-loaded feature ladders
+  let side;
+  if(tcState.selFeat){
+    const lad=tc.ladders.find(l=>l.name===tcState.selFeat);
+    const rungs=lad? lad.rungs.slice().sort((a,b)=>(b.support+b.against)-(a.support+a.against)).slice(0,14):[];
+    side='<div class="const-side-hd"><b>'+esc(tcState.selFeat)+'</b> · learned thresholds'+
+      '<button class="linklike" id="tcClear">clear</button></div>'+
+      (rungs.length? rungs.map(r=>{
+        const dir=(r.support>=r.against)?'for':'against';
+        return '<div class="row '+dir+'"><span class="rn">'+esc(lad.name)+' '+esc(r.op)+' '+esc(fmtNum(r.thr))+'</span>'+
+          '<span class="rw">'+(dir==='for'?'＋ supports':'－ opposes')+' · for '+fmtNum(+r.support.toFixed(1))+' · against '+fmtNum(+r.against.toFixed(1))+'</span></div>';
+      }).join('') : '<div class="muted">No learned threshold on this feature for the current filter.</div>');
+  } else {
+    const tops=tc.ladders.slice(0,14);
+    side='<div class="const-side-hd"><b>Feature ladders</b><span class="muted" style="font-weight:400"> · click a feature to focus</span></div>'+
+      (tops.length? tops.map(l=>{
+        const dir=l.net>=0?'for':'against';
+        return '<div class="row '+dir+'"><span class="rn">'+esc(l.name)+'</span>'+
+          '<span class="rw">'+l.rungs.length+' threshold'+(l.rungs.length===1?'':'s')+' · net '+(l.net>=0?'＋':'－')+fmtNum(Math.abs(+l.net.toFixed(1)))+'</span></div>';
+      }).join('') : '<div class="muted">No usable feature ladders for the current filter.</div>');
+  }
+  host.innerHTML=
+    '<div class="gsig"><div class="gsig-hd"><div class="gtitle">'+esc(tc.cls)+'</div>'+
+    '<div class="gmeta">'+tc.ladders.length+' feature ladders · rungs placed at their true value on each scale · '+
+      (tc.nLinksTotal>tc.links.length ? 'showing the '+tc.links.length+' strongest of '+tc.nLinksTotal+' rule co-firings' : tc.links.length+' rule co-firings')+
+      ' between thresholds</div></div>'+
+    '<div class="gsig-bd"><div class="const-grid">'+
+      '<div class="const-canvas" id="tcCanvas">'+svg+'</div>'+
+      '<div class="const-side">'+side+'</div>'+
+    '</div></div></div>';
+  const canvas=$('#tcCanvas');
+  if(canvas){
+    canvas.querySelectorAll('[data-feat]').forEach(el=>{
+      el.style.cursor='pointer';
+      el.addEventListener('click',()=>{ const f=el.getAttribute('data-feat'); tcState.selFeat=(tcState.selFeat===f?null:f); renderThrConst(); });
+    });
+  }
+  const clr=$('#tcClear'); if(clr) clr.onclick=()=>{ tcState.selFeat=null; renderThrConst(); };
 }
 
 // ===========================================================================
